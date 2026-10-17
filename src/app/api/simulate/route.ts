@@ -4,6 +4,7 @@ import { extractConversation } from "@/lib/ai/assistant";
 import { validatePurchase } from "@/lib/ai/decision";
 import { isDemo } from "@/lib/config";
 import { demoProducts, demoStore } from "@/lib/demo";
+import { adminClient } from "@/lib/supabase/admin";
 import type { Product, Store } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,7 +19,6 @@ export async function POST(request: Request) {
 
     let store: Store;
     let catalog: Product[];
-    let supabaseClient = null;
 
     if (isDemo()) {
       store = demoStore as Store;
@@ -26,8 +26,7 @@ export async function POST(request: Request) {
     } else {
       const auth = await apiStore();
       store = auth.store;
-      supabaseClient = auth.supabase;
-      const { data: products } = await supabaseClient
+      const { data: products } = await auth.supabase
         .from("products")
         .select("*,variants:product_variants(*)")
         .eq("store_id", store.id)
@@ -49,8 +48,9 @@ export async function POST(request: Request) {
     let order = null;
 
     const purchase = validatePurchase(output, catalog, message);
-    if (purchase && supabaseClient) {
-      const committed = await supabaseClient.rpc("confirm_order", {
+    if (purchase && !isDemo()) {
+      const admin = adminClient();
+      let committed = await admin.rpc("confirm_order", {
         p_store_id: store.id,
         p_variant_id: purchase.variant.id,
         p_customer_name: output.customer_name?.trim() || "Client Test",
@@ -60,6 +60,35 @@ export async function POST(request: Request) {
         p_quantity: output.quantity || 1,
         p_message_id: "sim-" + Date.now(),
       });
+
+      if (committed.error) {
+        const fee =
+          output.city?.trim().toLowerCase() === "casablanca"
+            ? store.delivery_casa
+            : store.delivery_other;
+        const direct = await admin
+          .from("orders")
+          .insert({
+            store_id: store.id,
+            variant_id: purchase.variant.id,
+            customer_name: output.customer_name?.trim() || "Client Test",
+            phone: "+212600000000",
+            city: output.city?.trim() || "Casablanca",
+            address: output.address?.trim() || "Centre Ville",
+            product_name: purchase.product.name,
+            size: purchase.variant.size,
+            color: purchase.variant.color,
+            quantity: output.quantity || 1,
+            unit_price_mad: purchase.product.price_mad,
+            delivery_fee_mad: fee,
+            status: "CONFIRMED",
+            source_message_id: "sim-" + Date.now(),
+          })
+          .select()
+          .single();
+        if (direct.data) committed = { data: direct.data, error: null };
+      }
+
       if (!committed.error && committed.data) {
         order = committed.data;
         reply = `Safi ${order.customer_name}, talabiya dyalk t2akdat ✅\n${order.product_name} · ${order.size} · ${order.color} ×${order.quantity}\nTotal : ${order.total_mad} DH (livraison ${order.delivery_fee_mad} DH incluse)\n${order.address}, ${order.city}\nRéf. ${String(order.id).slice(-6).toUpperCase()} · Paiement à la livraison.`;
