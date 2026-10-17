@@ -3,10 +3,12 @@ import { serverClient } from "@/lib/supabase/server";
 import { supabaseConfigured, isDemo } from "@/lib/config";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
 const credentials = z.object({
-  email: z.email(),
-  password: z.string().min(10).max(128),
+  email: z.string().trim().toLowerCase().pipe(z.string().email()),
+  password: z.string().trim().min(10).max(128),
 });
+
 export async function authenticate(
   form: FormData,
 ): Promise<{ error?: string; success?: string; redirect?: string }> {
@@ -37,9 +39,11 @@ export async function authenticate(
     : await client.auth.signInWithPassword(parsed.data);
   if (response.error)
     return {
-      error: register
-        ? "Inscription impossible. Vérifiez vos informations et réessayez."
-        : "Connexion impossible. Vérifiez vos identifiants et la confirmation de votre email.",
+      error:
+        response.error.message ||
+        (register
+          ? "Inscription impossible. Vérifiez vos informations et réessayez."
+          : "Connexion impossible. Vérifiez vos identifiants et la confirmation de votre email."),
     };
   if (register && !response.data.session)
     return {
@@ -48,6 +52,7 @@ export async function authenticate(
     };
   return { redirect: "/" };
 }
+
 export async function signOut() {
   if (!isDemo() && supabaseConfigured())
     await (await serverClient()).auth.signOut();
