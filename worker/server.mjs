@@ -22,7 +22,7 @@ if (
 )
   throw Error("Configure worker secrets and callback URL.");
 const box = secretBox(process.env.WHATSAPP_SESSION_KEY),
-  dir = process.env.STATE_DIR || "/state";
+  dir = process.env.STATE_DIR || "./state";
 fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 const db = new DatabaseSync(dir + "/worker.sqlite");
 db.exec(
@@ -252,7 +252,7 @@ http
       return json(res, 503, { error: "Worker unavailable" });
     }
   })
-  .listen(8091, "0.0.0.0", () =>
+  .listen(Number(process.env.PORT) || 8091, "0.0.0.0", () =>
     console.log("Wasla private multi-store WhatsApp worker ready."),
   );
 for (const { store_id } of db
