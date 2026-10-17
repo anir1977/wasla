@@ -45,12 +45,23 @@ export async function POST(request: Request) {
 
     const output = await extractConversation(store, catalog, conversationHistory);
     let reply = output.reply;
-    let order = null;
+    let order: {
+      id: string;
+      customer_name: string;
+      product_name: string;
+      size: string;
+      color: string;
+      quantity: number;
+      total_mad: number;
+      delivery_fee_mad: number;
+      address: string;
+      city: string;
+    } | null = null;
 
     const purchase = validatePurchase(output, catalog, message);
     if (purchase && !isDemo()) {
       const admin = adminClient();
-      let committed = await admin.rpc("confirm_order", {
+      const committed = await admin.rpc("confirm_order", {
         p_store_id: store.id,
         p_variant_id: purchase.variant.id,
         p_customer_name: output.customer_name?.trim() || "Client Test",
@@ -61,7 +72,9 @@ export async function POST(request: Request) {
         p_message_id: "sim-" + Date.now(),
       });
 
-      if (committed.error) {
+      if (!committed.error && committed.data) {
+        order = committed.data;
+      } else {
         const fee =
           output.city?.trim().toLowerCase() === "casablanca"
             ? store.delivery_casa
@@ -85,12 +98,14 @@ export async function POST(request: Request) {
             source_message_id: "sim-" + Date.now(),
           })
           .select()
-          .single();
-        if (direct.data) committed = { data: direct.data, error: null };
+          .maybeSingle();
+
+        if (direct.data) {
+          order = direct.data;
+        }
       }
 
-      if (!committed.error && committed.data) {
-        order = committed.data;
+      if (order) {
         reply = `Safi ${order.customer_name}, talabiya dyalk t2akdat ✅\n${order.product_name} · ${order.size} · ${order.color} ×${order.quantity}\nTotal : ${order.total_mad} DH (livraison ${order.delivery_fee_mad} DH incluse)\n${order.address}, ${order.city}\nRéf. ${String(order.id).slice(-6).toUpperCase()} · Paiement à la livraison.`;
       }
     }
