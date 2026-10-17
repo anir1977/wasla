@@ -1,0 +1,12 @@
+create table public.stores(id uuid primary key default gen_random_uuid(),owner_id uuid not null references auth.users(id) on delete cascade,name text not null,slug text unique,phone text,logo_url text,currency text default 'MAD',delivery_fee_casa numeric default 20,delivery_fee_other numeric default 35,ai_assistant_enabled boolean default true,created_at timestamptz default now());
+create table public.products(id uuid primary key default gen_random_uuid(),store_id uuid not null references public.stores(id),name text not null,description text,price numeric not null,image_url text,variants jsonb default '[]',stock_quantity integer default 0,is_active boolean default true,created_at timestamptz default now());
+create table public.orders(id uuid primary key default gen_random_uuid(),store_id uuid not null references public.stores(id),order_number text,customer_name text not null,customer_phone text not null,delivery_city text not null,delivery_address text,items jsonb not null default '[]',total_amount numeric not null,status text default 'PENDING' check(status in('PENDING','CONFIRMED','CANCELLED','SHIPPED')),whatsapp_chat_id text,notes text,created_at timestamptz default now());
+create table public.whatsapp_sessions(id uuid primary key default gen_random_uuid(),store_id uuid not null unique references public.stores(id),session_data text,status text default 'DISCONNECTED',phone_number text,last_active timestamptz default now());
+alter table public.stores enable row level security;
+alter table public.products enable row level security;
+alter table public.orders enable row level security;
+alter table public.whatsapp_sessions enable row level security;
+alter publication supabase_realtime add table public.orders;
+insert into storage.buckets(id,name,public) values('store-logos','store-logos',true);
+create policy "Public Access to Store Logos" on storage.objects for select using(bucket_id='store-logos');
+create policy "Authenticated users can upload logos" on storage.objects for insert to authenticated with check(bucket_id='store-logos');

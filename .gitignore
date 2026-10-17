@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.next-dev/
+artifacts/
+.env*
+!.env.example
+!.env.worker.example
+*.tsbuildinfo
+worker/state/
+*.log

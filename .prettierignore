@@ -1,0 +1,8 @@
+node_modules
+.next
+.next-dev
+worker/node_modules
+worker/state
+artifacts
+package-lock.json
+worker/package-lock.json

@@ -1,0 +1,38 @@
+name: wasla-saas
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Configure your Supabase URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Configure your Supabase publishable key}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.local
+    environment:
+      WHATSAPP_WORKER_URL: http://whatsapp-worker:8091
+    ports:
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+  whatsapp-worker:
+    build: ./worker
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:8091:8091"
+    env_file:
+      - .env.worker
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      - whatsapp_sessions:/state
+volumes:
+  whatsapp_sessions:
