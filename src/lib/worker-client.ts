@@ -1,4 +1,5 @@
 import "server-only";
+
 export async function workerRequest(
   storeId: string,
   method: "GET" | "POST" = "GET",
@@ -10,9 +11,13 @@ export async function workerRequest(
     `${base}/sessions/${encodeURIComponent(storeId)}`,
     {
       method,
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Bypass-Tunnel-Reminder": "true",
+        "User-Agent": "WaslaWorkerClient/1.0",
+      },
       cache: "no-store",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     },
   );
   if (!response.ok) throw Error("Worker unavailable");
