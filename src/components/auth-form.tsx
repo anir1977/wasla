@@ -68,11 +68,19 @@ export function AuthForm({
               : "Connectez-vous à votre espace commerçant."}
           </p>
           {(demo || !configured) && (
-            <div className="notice">
-              {demo
-                ? "Mode démo actif : les comptes et les envois réels sont désactivés."
-                : "Connectez un projet Supabase pour activer les comptes."}{" "}
-              <Link href="/">Explorer la démo →</Link>
+            <div className="notice" style={{ marginBottom: "20px" }}>
+              <p style={{ margin: "0 0 10px 0" }}>
+                {demo
+                  ? "Mode démonstration actif : vous pouvez explorer l'ensemble de la plateforme sans identifiants."
+                  : "Connectez un projet Supabase pour activer les comptes ou explorez directement la démo."}
+              </p>
+              <Link
+                href="/"
+                className="btn primary"
+                style={{ width: "100%", justifyContent: "center", textDecoration: "none" }}
+              >
+                Accéder au Dashboard (Démo) →
+              </Link>
             </div>
           )}
           <form
